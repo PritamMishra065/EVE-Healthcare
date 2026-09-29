@@ -3,6 +3,7 @@ import random
 import uuid
 
 from django.db import IntegrityError, transaction
+from drf_spectacular.utils import extend_schema
 from rest_framework import status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -21,6 +22,7 @@ class PaymentInitiateView(APIView):
     and updates the booking status accordingly.
     """
 
+    @extend_schema(request=PaymentInitiateSerializer, responses={201: PaymentSerializer})
     def post(self, request):
         serializer = PaymentInitiateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -73,6 +75,7 @@ class PaymentWebhookView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
 
+    @extend_schema(request=WebhookSerializer, responses={200: None})
     def post(self, request):
         serializer = WebhookSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

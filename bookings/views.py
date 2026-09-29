@@ -17,6 +17,8 @@ class BookingViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "post", "head", "options"]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Booking.objects.none()
         return Booking.objects.filter(user=self.request.user).select_related("test", "centre")
 
     def get_serializer_class(self):

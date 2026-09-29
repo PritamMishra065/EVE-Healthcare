@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EVE Healthcare — Diagnostic Booking</title>
+<style>
+  :root {
+    --bg: #f8f9fa; --surface: #fff; --border: #dee2e6; --text: #212529;
+    --muted: #6c757d; --primary: #0d6efd; --primary-hover: #0b5ed7;
+    --success: #198754; --danger: #dc3545; --warning: #ffc107;
+    --radius: 8px; --shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+  .header { background: linear-gradient(135deg, #0d6efd, #6610f2); color: #fff; padding: 24px 16px; text-align: center; }
+  .header h1 { font-size: 1.5rem; font-weight: 700; }
+  .header p { font-size: .875rem; opacity: .85; margin-top: 4px; }
+  .container { max-width: 900px; margin: 0 auto; padding: 16px; }
+  .tabs { display: flex; gap: 4px; background: var(--surface); border-radius: var(--radius); padding: 4px; margin-bottom: 16px; box-shadow: var(--shadow); overflow-x: auto; }
+  .tab { padding: 8px 16px; border: none; background: none; cursor: pointer; border-radius: 6px; font-size: .875rem; font-weight: 500; color: var(--muted); white-space: nowrap; transition: all .15s; }
+  .tab.active { background: var(--primary); color: #fff; }
+  .tab:hover:not(.active) { background: #e9ecef; color: var(--text); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 1.1rem; margin-bottom: 12px; }
+  .card h3 { font-size: .95rem; margin-bottom: 8px; color: var(--muted); }
+  .form-group { margin-bottom: 12px; }
+  .form-group label { display: block; font-size: .8rem; font-weight: 600; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .5px; }
+  .form-group input, .form-group select { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: .9rem; }
+  .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(13,110,253,.15); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .btn { padding: 10px 20px; border: none; border-radius: 6px; font-size: .9rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-warning { background: var(--warning); color: var(--text); }
+  .btn-sm { padding: 5px 12px; font-size: .8rem; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 12px; font-size: .875rem; }
+  .alert-success { background: #d1e7dd; color: #0f5132; }
+  .alert-danger { background: #f8d7da; color: #842029; }
+  .alert-info { background: #cff4fc; color: #055160; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: .75rem; font-weight: 600; }
+  .badge-pending { background: var(--warning); color: #000; }
+  .badge-confirmed { background: var(--success); color: #fff; }
+  .badge-failed { background: var(--danger); color: #fff; }
+  .badge-cancelled { background: var(--muted); color: #fff; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+  th { text-align: left; padding: 8px 12px; background: #f1f3f5; font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+  td { padding: 8px 12px; border-top: 1px solid var(--border); }
+  .user-bar { display: flex; align-items: center; justify-content: space-between; background: var(--surface); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px; box-shadow: var(--shadow); font-size: .875rem; }
+  .user-bar .email { font-weight: 600; }
+  .empty { text-align: center; padding: 32px; color: var(--muted); }
+  .centre-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .centre-card h3 { color: var(--text); font-size: 1rem; }
+  .centre-card .location { color: var(--muted); font-size: .85rem; margin-bottom: 8px; }
+  .test-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f1f3f5; }
+  .test-item:last-child { border: none; }
+  .test-price { font-weight: 700; color: var(--success); }
+  .log { background: #1e1e2e; color: #cdd6f4; border-radius: var(--radius); padding: 16px; max-height: 400px; overflow-y: auto; font-family: 'SF Mono', Monaco, monospace; font-size: .8rem; line-height: 1.7; }
+  .log-entry { margin-bottom: 4px; }
+  .log-method { font-weight: 700; }
+  .log-method.post { color: #a6e3a1; }
+  .log-method.get { color: #89b4fa; }
+  .log-status.s2 { color: #a6e3a1; }
+  .log-status.s4 { color: #f38ba8; }
+  .log-url { color: #cba6f7; }
+  .log-time { color: #6c7086; }
+  #response-log .log { min-height: 100px; }
+  .hidden { display: none; }
+  @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } .tabs { flex-wrap: wrap; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>EVE Healthcare</h1>
+  <p>Diagnostic Test Booking System</p>
+</div>
+
+<div class="container">
+  <!-- Auth Bar -->
+  <div id="auth-bar" class="user-bar hidden">
+    <div>Logged in as <span class="email" id="user-email"></span></div>
+    <button class="btn btn-sm btn-danger" onclick="logout()">Logout</button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" data-tab="auth">Auth</button>
+    <button class="tab" data-tab="centres">Centres & Tests</button>
+    <button class="tab" data-tab="bookings">Bookings</button>
+    <button class="tab" data-tab="payments">Payments</button>
+    <button class="tab" data-tab="webhook">Webhook</button>
+    <button class="tab" data-tab="logs">API Logs</button>
+  </div>
+
+  <!-- AUTH PANEL -->
+  <div id="auth" class="panel active">
+    <div class="card">
+      <h2>Sign Up</h2>
+      <div id="signup-msg"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="signup-email" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="signup-username" placeholder="johndoe">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="signup-password" placeholder="Min 8 characters">
+        </div>
+        <div class="form-group">
+          <label>Phone (optional)</label>
+          <input type="text" id="signup-phone" placeholder="9876543210">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="signup()">Create Account</button>
+    </div>
+
+    <div class="card">
+      <h2>Login</h2>
+      <div id="login-msg"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="login-email" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="Your password">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="login()">Login</button>
+    </div>
+  </div>
+
+  <!-- CENTRES PANEL -->
+  <div id="centres" class="panel">
+    <div class="card">
+      <h2>Diagnostic Centres</h2>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">Browse available centres and their diagnostic tests. Click "Book" to start a booking.</p>
+      <div id="centres-list"><div class="empty">Loading...</div></div>
+    </div>
+  </div>
+
+  <!-- BOOKINGS PANEL -->
+  <div id="bookings" class="panel">
+    <div class="card">
+      <h2>Create Booking</h2>
+      <div id="booking-msg"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Centre</label>
+          <select id="book-centre" onchange="loadTestsForCentre()">
+            <option value="">Select a centre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Diagnostic Test</label>
+          <select id="book-test">
+            <option value="">Select a test</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Appointment Date & Time</label>
+        <input type="datetime-local" id="book-datetime">
+      </div>
+      <button class="btn btn-success" onclick="createBooking()">Book Appointment</button>
+    </div>
+
+    <div class="card">
+      <h2>My Bookings</h2>
+      <button class="btn btn-sm btn-primary" onclick="loadBookings()" style="margin-bottom:12px;">Refresh</button>
+      <div id="bookings-list"><div class="empty">Login to see your bookings</div></div>
+    </div>
+  </div>
+
+  <!-- PAYMENTS PANEL -->
+  <div id="payments" class="panel">
+    <div class="card">
+      <h2>Initiate Payment</h2>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">Simulated payment — randomly returns SUCCESS or FAILED.</p>
+      <div id="payment-msg"></div>
+      <div class="form-group">
+        <label>Booking ID</label>
+        <select id="pay-booking">
+          <option value="">Select a pending booking</option>
+        </select>
+      </div>
+      <button class="btn btn-success" onclick="initiatePayment()">Pay Now</button>
+    </div>
+  </div>
+
+  <!-- WEBHOOK PANEL -->
+  <div id="webhook" class="panel">
+    <div class="card">
+      <h2>Simulated Payment Webhook</h2>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">Send a webhook event as if from a payment provider. Try sending the same event_id twice to see idempotency.</p>
+      <div id="webhook-msg"></div>
+      <div class="form-group">
+        <label>Event ID</label>
+        <input type="text" id="wh-event-id" placeholder="evt_unique_123">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Transaction ID</label>
+          <input type="text" id="wh-txn-id" placeholder="txn_from_payment_response">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="wh-status">
+            <option value="SUCCESS">SUCCESS</option>
+            <option value="FAILED">FAILED</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-warning" onclick="sendWebhook()">Send Webhook</button>
+    </div>
+  </div>
+
+  <!-- LOGS PANEL -->
+  <div id="logs" class="panel">
+    <div class="card" id="response-log">
+      <h2>API Request / Response Log</h2>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">All API calls made from this page are logged here in real-time.</p>
+      <div class="log" id="log-output"><span style="color:#6c7086;">No requests yet...</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '';
+let token = localStorage.getItem('eve_token') || null;
+let userEmail = localStorage.getItem('eve_email') || null;
+let centresData = [];
+let logEntries = [];
+
+// --- Init ---
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => switchTab(t.dataset.tab));
+  });
+  setMinDatetime();
+  if (token) showLoggedIn();
+  loadCentres();
+});
+
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === id));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === id));
+  if (id === 'centres') loadCentres();
+  if (id === 'bookings' && token) { loadBookings(); loadBookingForm(); }
+  if (id === 'payments' && token) loadPendingBookings();
+}
+
+function setMinDatetime() {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset() + 60);
+  document.getElementById('book-datetime').min = now.toISOString().slice(0, 16);
+  document.getElementById('book-datetime').value = now.toISOString().slice(0, 16);
+}
+
+// --- Auth ---
+async function signup() {
+  const data = {
+    email: document.getElementById('signup-email').value,
+    username: document.getElementById('signup-username').value,
+    password: document.getElementById('signup-password').value,
+    phone: document.getElementById('signup-phone').value,
+  };
+  const res = await api('POST', '/api/auth/signup/', data);
+  if (res.ok) {
+    showMsg('signup-msg', 'Account created! Now login below.', 'success');
+    document.getElementById('login-email').value = data.email;
+  } else {
+    showMsg('signup-msg', formatErrors(res.data), 'danger');
+  }
+}
+
+async function login() {
+  const data = {
+    email: document.getElementById('login-email').value,
+    password: document.getElementById('login-password').value,
+  };
+  const res = await api('POST', '/api/auth/login/', data);
+  if (res.ok) {
+    token = res.data.access;
+    userEmail = data.email;
+    localStorage.setItem('eve_token', token);
+    localStorage.setItem('eve_email', userEmail);
+    showLoggedIn();
+    showMsg('login-msg', 'Login successful!', 'success');
+  } else {
+    showMsg('login-msg', 'Invalid email or password.', 'danger');
+  }
+}
+
+function logout() {
+  token = null; userEmail = null;
+  localStorage.removeItem('eve_token');
+  localStorage.removeItem('eve_email');
+  document.getElementById('auth-bar').classList.add('hidden');
+  switchTab('auth');
+}
+
+function showLoggedIn() {
+  document.getElementById('user-email').textContent = userEmail;
+  document.getElementById('auth-bar').classList.remove('hidden');
+}
+
+// --- Centres ---
+async function loadCentres() {
+  const res = await api('GET', '/api/centres/');
+  if (!res.ok) return;
+  centresData = [];
+  let results = res.data.results || res.data;
+  // Load details for each centre
+  const el = document.getElementById('centres-list');
+  if (!results.length) { el.innerHTML = '<div class="empty">No centres found.</div>'; return; }
+
+  let html = '';
+  for (const c of results) {
+    const detail = await api('GET', `/api/centres/${c.id}/`);
+    if (detail.ok) {
+      centresData.push(detail.data);
+      const tests = detail.data.tests || [];
+      html += `<div class="centre-card">
+        <h3>${esc(detail.data.name)}</h3>
+        <div class="location">${esc(detail.data.location)}</div>
+        ${tests.length ? tests.map(t => `
+          <div class="test-item">
+            <span>${esc(t.name)}</span>
+            <span>
+              <span class="test-price">₹${t.price}</span>
+              ${token ? `<button class="btn btn-sm btn-primary" style="margin-left:8px" onclick="quickBook('${detail.data.id}','${t.id}')">Book</button>` : ''}
+            </span>
+          </div>`).join('') : '<div class="empty">No tests available</div>'}
+      </div>`;
+    }
+  }
+  el.innerHTML = html;
+}
+
+function quickBook(centreId, testId) {
+  switchTab('bookings');
+  setTimeout(() => {
+    document.getElementById('book-centre').value = centreId;
+    loadTestsForCentre();
+    setTimeout(() => { document.getElementById('book-test').value = testId; }, 100);
+  }, 50);
+}
+
+// --- Booking Form ---
+function loadBookingForm() {
+  const sel = document.getElementById('book-centre');
+  sel.innerHTML = '<option value="">Select a centre</option>';
+  centresData.forEach(c => {
+    sel.innerHTML += `<option value="${c.id}">${esc(c.name)} — ${esc(c.location)}</option>`;
+  });
+}
+
+function loadTestsForCentre() {
+  const cid = document.getElementById('book-centre').value;
+  const sel = document.getElementById('book-test');
+  sel.innerHTML = '<option value="">Select a test</option>';
+  const centre = centresData.find(c => c.id === cid);
+  if (!centre) return;
+  (centre.tests || []).filter(t => t.is_active).forEach(t => {
+    sel.innerHTML += `<option value="${t.id}">${esc(t.name)} — ₹${t.price}</option>`;
+  });
+}
+
+async function createBooking() {
+  const dt = document.getElementById('book-datetime').value;
+  const data = {
+    centre: document.getElementById('book-centre').value,
+    test: document.getElementById('book-test').value,
+    appointment_datetime: dt ? new Date(dt).toISOString() : '',
+  };
+  if (!data.centre || !data.test || !data.appointment_datetime) {
+    showMsg('booking-msg', 'Please fill all fields.', 'danger'); return;
+  }
+  const res = await api('POST', '/api/bookings/', data, true);
+  if (res.ok) {
+    showMsg('booking-msg', `Booking created! ID: ${res.data.id} — Status: ${res.data.status}`, 'success');
+    loadBookings();
+  } else {
+    showMsg('booking-msg', formatErrors(res.data), 'danger');
+  }
+}
+
+async function loadBookings() {
+  if (!token) return;
+  const res = await api('GET', '/api/bookings/', null, true);
+  const el = document.getElementById('bookings-list');
+  if (!res.ok) { el.innerHTML = '<div class="empty">Failed to load.</div>'; return; }
+  const results = res.data.results || res.data;
+  if (!results.length) { el.innerHTML = '<div class="empty">No bookings yet.</div>'; return; }
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>ID</th><th>Test</th><th>Centre</th><th>Date</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>${results.map(b => `<tr>
+      <td title="${b.id}">${b.id.slice(0,8)}…</td>
+      <td>${esc(b.test_name)}</td>
+      <td>${esc(b.centre_name)}</td>
+      <td>${new Date(b.appointment_datetime).toLocaleString()}</td>
+      <td>₹${b.amount}</td>
+      <td><span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></td>
+      <td>
+        ${b.status === 'PENDING' ? `<button class="btn btn-sm btn-success" onclick="payFromList('${b.id}')">Pay</button> <button class="btn btn-sm btn-danger" onclick="cancelBooking('${b.id}')">Cancel</button>` : ''}
+        ${b.status === 'CONFIRMED' ? `<button class="btn btn-sm btn-danger" onclick="cancelBooking('${b.id}')">Cancel</button>` : ''}
+      </td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+async function cancelBooking(id) {
+  const res = await api('POST', `/api/bookings/${id}/cancel/`, {}, true);
+  if (res.ok) loadBookings();
+}
+
+function payFromList(id) {
+  switchTab('payments');
+  setTimeout(() => {
+    loadPendingBookings().then(() => {
+      document.getElementById('pay-booking').value = id;
+    });
+  }, 50);
+}
+
+// --- Payments ---
+async function loadPendingBookings() {
+  if (!token) return;
+  const res = await api('GET', '/api/bookings/?status=PENDING', null, true);
+  const sel = document.getElementById('pay-booking');
+  sel.innerHTML = '<option value="">Select a pending booking</option>';
+  if (!res.ok) return;
+  const results = res.data.results || res.data;
+  results.forEach(b => {
+    sel.innerHTML += `<option value="${b.id}">${b.test_name} @ ${b.centre_name} — ₹${b.amount}</option>`;
+  });
+}
+
+async function initiatePayment() {
+  const bookingId = document.getElementById('pay-booking').value;
+  if (!bookingId) { showMsg('payment-msg', 'Select a booking first.', 'danger'); return; }
+  const res = await api('POST', '/api/payments/', { booking_id: bookingId }, true);
+  if (res.ok) {
+    const s = res.data.status;
+    showMsg('payment-msg',
+      `Payment ${s}! Transaction: ${res.data.transaction_id}`,
+      s === 'SUCCESS' ? 'success' : 'danger'
+    );
+    loadPendingBookings();
+  } else {
+    showMsg('payment-msg', formatErrors(res.data), 'danger');
+  }
+}
+
+// --- Webhook ---
+async function sendWebhook() {
+  const data = {
+    event_id: document.getElementById('wh-event-id').value,
+    transaction_id: document.getElementById('wh-txn-id').value,
+    status: document.getElementById('wh-status').value,
+  };
+  if (!data.event_id || !data.transaction_id) {
+    showMsg('webhook-msg', 'Fill event ID and transaction ID.', 'danger'); return;
+  }
+  const res = await api('POST', '/api/payments/webhook/', data);
+  showMsg('webhook-msg', res.data.detail || JSON.stringify(res.data), res.ok ? 'info' : 'danger');
+}
+
+// --- API helper ---
+async function api(method, url, body, auth) {
+  const start = performance.now();
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (auth && token) opts.headers['Authorization'] = `Bearer ${token}`;
+  if (body && method !== 'GET') opts.body = JSON.stringify(body);
+
+  let res, data;
+  try {
+    res = await fetch(API + url, opts);
+    data = await res.json();
+  } catch (e) {
+    data = { detail: e.message };
+    res = { ok: false, status: 0 };
+  }
+  const ms = (performance.now() - start).toFixed(0);
+  addLog(method, url, res.status, ms, data);
+  return { ok: res.ok, status: res.status, data };
+}
+
+// --- Logging ---
+function addLog(method, url, status, ms, data) {
+  const time = new Date().toLocaleTimeString();
+  const mc = method === 'POST' ? 'post' : 'get';
+  const sc = status >= 400 ? 's4' : 's2';
+  const entry = `<div class="log-entry"><span class="log-time">${time}</span> <span class="log-method ${mc}">${method}</span> <span class="log-url">${esc(url)}</span> <span class="log-status ${sc}">${status}</span> <span class="log-time">${ms}ms</span></div><div class="log-entry" style="color:#585b70;margin-bottom:8px;word-break:break-all;">${esc(JSON.stringify(data).slice(0, 300))}</div>`;
+  logEntries.unshift(entry);
+  const el = document.getElementById('log-output');
+  el.innerHTML = logEntries.join('');
+}
+
+// --- Helpers ---
+function showMsg(id, msg, type) {
+  const el = document.getElementById(id);
+  el.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+  setTimeout(() => { el.innerHTML = ''; }, 6000);
+}
+
+function formatErrors(data) {
+  if (typeof data === 'string') return esc(data);
+  if (data.detail) return esc(data.detail);
+  return Object.entries(data).map(([k, v]) => `<b>${esc(k)}:</b> ${esc(Array.isArray(v) ? v.join(', ') : v)}`).join('<br>');
+}
+
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>
