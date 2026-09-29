@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: eve_health
+      POSTGRES_USER: eve_user
+      POSTGRES_PASSWORD: eve_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  web:
+    build: .
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py seed_data &&
+             gunicorn eve_health.wsgi:application --bind 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+    environment:
+      SECRET_KEY: django-docker-secret-key
+      DEBUG: "True"
+      DATABASE_URL: postgres://eve_user:eve_pass@db:5432/eve_health
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
